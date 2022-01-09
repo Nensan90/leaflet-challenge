@@ -14,10 +14,24 @@ for (let i=0; i<features.length; i++) {
         var depth = features[i].geometry.coordinates[2];
         var mag = features[i].properties.mag;
         var time = Date(features[i].properties.time);
+        var fillColor;
+        if (depth < 12) {fillColor = "#9FFF33";}
+        else if (depth >= 20 && depth < 40) {fillColor = "#FF7A33"}
+        else if (depth >= 40 && depth < 60) {fillColor = "#FFE333"}
+        else if (depth >= 50 && depth < 80) {fillColor = "#FFAC33"}
+        else if (depth >= 80 && depth < 100) {fillColor = "#CEFF33"}
+        else {fillColor = "#FF3333"}
 
-        radius = mag * 2.5;
-
-        marker = L.circleMarker(location, features).bindPopup(
+        radius = mag * 2.0;
+        var geojsonMarkerOptions = {
+            radius: radius,
+            fillColor: fillColor,
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 1.0
+        };
+        marker = L.circleMarker(location, geojsonMarkerOptions).bindPopup(
             `<h3>ID: ${quakeID}</h3>
             <h4>${place}</h4>
             <hr>
@@ -27,9 +41,9 @@ for (let i=0; i<features.length; i++) {
             <p>Depth: ${depth}</p>
             <p>Magnitude: ${mag}</p>`
         );
-
         quakeMarkers.push(marker);
     }
+    
     var earthquakes = L.layerGroup(quakeMarkers);
     quakeMapGen(response, earthquakes);
 }
@@ -41,41 +55,31 @@ function quakeMapGen(data, earthquakes) {
     var center = [centerLat, centerLng];
     console.log(center);
 
-    Features.forEach(function (feature) {
-        var size = "";
-        if(feature.properties.mag  <2 ) {
-          size = 8000}
-        else size = ((feature.properties.mag * 100)**2)
-        var color = "";
-        if(feature.geometry.coordinates[2] <35) {
-          color = "#FFE333"}
-        else if(feature.geometry.coordinates[2] < 80) {
-          color = "#FF4040"}
-        else if(feature.geometry.coordinates[2] < 200) {
-          color = "#CD3333"}
-        else if(feature.geometry.coordinates[2] < 300) {
-          color = "FFAC33"}
-        else if (feature.geometry.coordinates[2] > 300) {
-          color = "black"
-        };
-
-        L.circle([feature.geometry.coordinates[1],feature.geometry.coordinates[0]],{radius: size, color: "black",fillColor: color, fillOpacity: 1, weight: .5})
-        .bindPopup(`<h3>${feature.properties.place}</h3><hr><p>${new Date(feature.properties.time)}</p> <p>Magnitude:  ${feature.properties.mag} <br> Depth:  ${feature.geometry.coordinates[2]} </p>`).addTo(map);
-});
-};
-
-var legend = L.control({position: 'bottomright'})
-legend.onAdd= function() {
-  var div = L.DomUtil.create("div", "info legend");
-  var grades = ["<35","35 - 80", "80 - 200", "200 - 300", ">300" ]
-    colors = ["#FFE333", "#FF4040","#CD3333","FFAC33","black" ]
-
-    var legendInfo = "<h3>Earthquake Depth (km)</h3>" 
-  div.innerHTML = legendInfo;
-  for (var i = 0; i < grades.length; i++) {
-    div.innerHTML +=
-      "<ul>" + '<i style="background:' + colors[i] + '"></i> ' +
-        labels[i] +" " + grades[i] + "</ul>"}
-  return div;
-
-};
+    var streetview = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    })
+  
+    var topographic = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+    });
+  
+    var base = {
+      "Street Map": streetview,
+      "Topographic Map": topographic
+    };
+  
+    var overlay = {
+      Earthquakes: earthquakes
+    };
+  
+    var newmap = L.map("map", {
+      center: center,
+      zoom: 3,
+      layers: [streetview, earthquakes]
+    });
+  
+    L.control.layers(base, overlay, {
+      collapsed: false
+    }).addTo(newmap)
+  
+}
